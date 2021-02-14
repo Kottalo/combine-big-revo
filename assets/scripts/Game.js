@@ -1,3 +1,5 @@
+var EnergyBar = require("EnergyBar");
+
 const Fruit = cc.Class({
     name: 'FruitItem',
     properties: {
@@ -15,10 +17,25 @@ const JuiceItem = cc.Class({
     }
 });
 
+const Skill = cc.Class({
+    name: 'Skill',
+    properties: {
+        button: cc.Button,
+        func: function() {},
+    }
+});
+
 cc.Class({
     extends: cc.Component,
 
     properties: {
+        skills: {
+            default: [
+                
+            ],
+            type: Skill,
+        },
+
         fruits: {
             default: [],
             type: Fruit
@@ -33,6 +50,11 @@ cc.Class({
         fruitPrefab: {
             default: null,
             type: cc.Prefab
+        },
+
+        container: {
+            default: null,
+            type: cc.Node
         },
 
         juicePrefab: {
@@ -60,6 +82,15 @@ cc.Class({
         fingerBtn: {
             default: null,
             type: cc.Button
+        },
+        // 摇一摇按钮
+        shakeBtn: {
+            default: null,
+            type: cc.Button
+        },
+        energyBar: {
+            default: null,
+            type: EnergyBar,
         }
     },
 
@@ -79,6 +110,8 @@ cc.Class({
     },
     start() {
         this.fingerBtn.node.on(cc.Node.EventType.TOUCH_START, this.onFingerTouch, this)
+
+        this.shakeBtn.node.on(cc.Node.EventType.TOUCH_START, this.shake, this)
     },
 
     // 开启物理引擎和碰撞检测
@@ -99,8 +132,14 @@ cc.Class({
 
         let node = new cc.Node();
 
+        // 整个容器
+        this.container = node;
+        
         let body = node.addComponent(cc.RigidBody);
-        body.type = cc.RigidBodyType.Static;
+        body.type = cc.RigidBodyType.Kinematic;
+
+        body.allowSleep = false;
+        
 
         const _addBound = (node, x, y, width, height) => {
             let collider = node.addComponent(cc.PhysicsBoxCollider);
@@ -227,6 +266,8 @@ cc.Class({
 
         this.addScore(id)
 
+        this.energyBar.gainEnergy(id);
+
         const nextId = id + 1
         if (nextId <= 11) {
             const newFruit = this.createFruitOnPos(x, y, nextId)
@@ -266,5 +307,20 @@ cc.Class({
         this.score += fruitId * 2
         // todo 处理分数tween动画
         this.scoreLabel.string = this.score
+    },
+
+    // 摇一摇
+    shake()
+    {
+        var force = 100;
+        var position = this.container.position;
+        cc.tween(this.container)
+            // .to(0.1, { position: cc.v2(position.x-force, position.y-force), rotation: 50 })
+            .to(0.05, { rotation: 5 })
+            .to(0.05, { rotation: -5 })
+            .to(0.05, { rotation: 5 })
+            .to(0.05, { rotation: -5 })
+            .to(0.05, { rotation: 0 })
+            .start()
     }
 });
