@@ -1,5 +1,5 @@
 {
-  "title": "big_watermelon",
+  "title": "CombineBigRevo",
   "packageName": "org.cocos2d.demo",
   "startScene": "fa19332b-97ad-4d3c-abb8-67c5765d7ce3",
   "excludeScenes": [],
@@ -27,6 +27,7 @@
   },
   "ios": {
     "REMOTE_SERVER_ROOT": "",
+    "ios_enable_jit": true,
     "packageName": "org.cocos2d.demo"
   },
   "mac": {
@@ -49,5 +50,6 @@
     "scheme": "https",
     "skipRecord": false
   },
-  "appBundle": false
+  "appBundle": false,
+  "agreements": {}
 }

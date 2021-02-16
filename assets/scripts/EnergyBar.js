@@ -46,6 +46,12 @@ cc.Class({
         this.energyPoint += Math.min(point, capacity);
     },
 
+    // 消耗能量
+    consumeEnergy(point)
+    {
+        this.energyPoint -= point;
+    },
+
     // 刷新能量条
     updateEnergyBar()
     {
@@ -54,5 +60,13 @@ cc.Class({
         var energyRatio = this.energyPoint / this.energyMax;
 
         energyBar.progress = energyRatio;
+
+        this.updateLabel();
+    },
+
+    // 刷新能量点
+    updateLabel()
+    {
+        this.node.getChildByName("EnergyPoint").getComponent(cc.Label).string = this.energyPoint + "/" + this.energyMax;
     }
 });

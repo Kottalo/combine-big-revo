@@ -20,8 +20,9 @@ const JuiceItem = cc.Class({
 const Skill = cc.Class({
     name: 'Skill',
     properties: {
-        button: cc.Button,
-        func: function() {},
+        name: cc.String,
+        energy: cc.Integer,
+        func: cc.String,
     }
 });
 
@@ -30,10 +31,23 @@ cc.Class({
 
     properties: {
         skills: {
-            default: [
-                
-            ],
+            default: [],
             type: Skill,
+        },
+
+        skillButtonGap: {
+            default: 50,
+            type: cc.Integer,
+        },
+
+        skillButtonOffset: {
+            default: null,
+            type: cc.v2,
+        },
+
+        skillButtonPrefab: {
+            default: null,
+            type: cc.Prefab,
         },
 
         fruits: {
@@ -79,15 +93,6 @@ cc.Class({
             default: null,
             type: cc.Label
         },
-        fingerBtn: {
-            default: null,
-            type: cc.Button
-        },
-        // 摇一摇按钮
-        shakeBtn: {
-            default: null,
-            type: cc.Button
-        },
         energyBar: {
             default: null,
             type: EnergyBar,
@@ -109,9 +114,29 @@ cc.Class({
 
     },
     start() {
-        this.fingerBtn.node.on(cc.Node.EventType.TOUCH_START, this.onFingerTouch, this)
+        
+        // 生成技能按钮
+        this.skills.forEach((skill) => {
+            var skillButton = cc.instantiate(this.skillButtonPrefab);
 
-        this.shakeBtn.node.on(cc.Node.EventType.TOUCH_START, this.shake, this)
+            var skillBtn = skillButton.getComponent(cc.Button);
+            
+            skillButton.children[0].children[0].getComponent(cc.Label).string = skill.name+` (${skill.energy})`;
+
+            skillBtn.node.on(cc.Node.EventType.TOUCH_START, function(event) {
+                if (this.energyBar.energyPoint >=  skill.energy)
+                {
+                    this.energyBar.consumeEnergy(skill.energy);
+
+                    eval(`this.${skill.func}()`);
+                }
+            }, this);
+
+            skillButton.parent = this.node;
+            skillButton.position = this.skillButtonOffset;
+
+            this.skillButtonOffset = new cc.v2(this.skillButtonOffset.x, this.skillButtonOffset.y - this.skillButtonGap);
+        });
     },
 
     // 开启物理引擎和碰撞检测
@@ -176,7 +201,7 @@ cc.Class({
         x = x - width / 2
         y = y - height / 2
 
-        const action = cc.sequence(cc.moveBy(0.3, cc.v2(x, 0)).easing(cc.easeCubicActionIn()), cc.callFunc(() => {
+        const action = cc.sequence(cc.moveBy(0.1, cc.v2(x, 0)).easing(cc.easeCubicActionIn()), cc.callFunc(() => {
             // 开启物理效果
             this.startFruitPhysics(fruit)
 
@@ -256,35 +281,64 @@ cc.Class({
         other.node.off('sameContact') // 两个node都会触发，todo 看看有没有其他方法只展示一次的
 
         const id = other.getComponent('Fruit').id
-        // todo 可以使用对象池回收
-        self.node.removeFromParent(true)
-        other.node.removeFromParent(true)
 
-        const {x, y} = other.node
+        // 最大无效
+        if (id == 11)
+            return;
 
-        this.createFruitJuice(id, cc.v2({x, y}), other.node.width)
+        
+        var vanishNode;
+        var stayNode;
 
-        this.addScore(id)
-
-        this.energyBar.gainEnergy(id);
-
-        const nextId = id + 1
-        if (nextId <= 11) {
-            const newFruit = this.createFruitOnPos(x, y, nextId)
-
-            this.startFruitPhysics(newFruit)
-
-            // 展示动画 todo 动画效果需要调整
-            newFruit.scale = 0
-            cc.tween(newFruit).to(.5, {
-                scale: 0.6
-            }, {
-                easing: "backOut"
-            }).start()
-        } else {
-            // todo 合成两个西瓜
-            console.log(' todo 合成两个西瓜 还没有实现哦~ ')
+        if (self.node.position.y > other.node.position.y)
+        {
+            vanishNode = self.node;
+            stayNode = other.node;
         }
+        else
+        {
+            vanishNode = other.node;
+            stayNode = self.node;
+        }
+
+        vanishNode.getComponent(cc.PhysicsCircleCollider).enabled = false;
+
+        cc.tween(vanishNode)
+            .to(0.2, {position: stayNode.position} )
+            .call(() => {
+                // todo 可以使用对象池回收
+                vanishNode.removeFromParent(true)
+                stayNode.removeFromParent(true)
+
+                const {x, y} = stayNode
+
+                this.createFruitJuice(id, cc.v2({x, y}), stayNode.width)
+
+                this.addScore(id)
+
+                this.energyBar.gainEnergy(id);
+
+                const nextId = id + 1
+                if (nextId <= 11) {
+                    const newFruit = this.createFruitOnPos(x, y, nextId)
+
+                    this.startFruitPhysics(newFruit)
+
+                    // 展示动画 todo 动画效果需要调整
+                    newFruit.scale = 0
+                    cc.tween(newFruit).to(.5, {
+                        scale: 0.6
+                    }, {
+                        easing: "backOut"
+                    }).start()
+                } else {
+                    // todo 合成两个西瓜
+                    console.log(' todo 合成两个西瓜 还没有实现哦~ ')
+                }
+            })
+        .start();
+
+        
     },
 
     // 合并时的动画效果
@@ -309,18 +363,25 @@ cc.Class({
         this.scoreLabel.string = this.score
     },
 
+    // ---技能---
+
     // 摇一摇
     shake()
     {
         var force = 100;
         var position = this.container.position;
         cc.tween(this.container)
-            // .to(0.1, { position: cc.v2(position.x-force, position.y-force), rotation: 50 })
             .to(0.05, { rotation: 5 })
             .to(0.05, { rotation: -5 })
             .to(0.05, { rotation: 5 })
             .to(0.05, { rotation: -5 })
             .to(0.05, { rotation: 0 })
             .start()
+    },
+
+    // 消除
+    erase()
+    {
+        console.log("erase");
     }
 });
